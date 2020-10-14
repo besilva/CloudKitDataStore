@@ -54,6 +54,8 @@ public class CloudKitManager: NSObject {
 public class DAO<T> where T: CloudObject {
     let manager: CloudKitManager = CloudKitManager.shared
     
+    public init() {}
+    
     public func fetch(predicate: NSPredicate, completion: @escaping (Swift.Result<[T], Error>) -> Void) {
         let query = CKQuery(recordType: T.recordType, predicate: predicate)
         
