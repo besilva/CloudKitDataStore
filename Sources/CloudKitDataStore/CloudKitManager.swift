@@ -17,6 +17,7 @@ public enum DatabaseType{
 
 public enum CloudKitError: Error {
     case invalidRecordID
+    case unableToConvertRecord
 }
 
 public class CloudKitManager: NSObject {
@@ -42,7 +43,12 @@ public class CloudKitManager: NSObject {
     }
     
     private override init() {
-        container =  CKContainer(identifier: CloudKitManager.identifier)
+        if !CloudKitManager.identifier.isEmpty {
+            container =  CKContainer(identifier: CloudKitManager.identifier)
+        } else {
+            container = CKContainer.default()
+        }
+        
     }
     
     public func changeDatabase(type: DatabaseType) {
@@ -56,7 +62,7 @@ public class DAO<T> where T: CloudObject {
     
     public init() {}
     
-    public func fetch(predicate: NSPredicate, completion: @escaping (Swift.Result<[T], Error>) -> Void) {
+    public func fetch(predicate: NSPredicate, completion: @escaping (Swift.Result<[T], Error>) -> Void) throws {
         let query = CKQuery(recordType: T.recordType, predicate: predicate)
         
         
@@ -68,15 +74,21 @@ public class DAO<T> where T: CloudObject {
                 completion(.failure(error))
             }
             guard let results = results else { return }
-            let contents: [T] = results.compactMap { x in
-                let content = T(record: x)
-                return content
+            var contents: [T] = []
+            for result in results {
+                do {
+                    let content = try T(record: result)
+                    contents.append(content)
+                } catch {
+                    return completion(.failure(CloudKitError.unableToConvertRecord))
+                }
             }
+            
             completion(.success(contents))
         }
     }
     
-    public func fetchOne(recordID: CKRecord.ID, completion: @escaping (Result<T, Error>) -> Void) {
+    public func fetchOne(recordID: CKRecord.ID, completion: @escaping (Result<T, Error>) -> Void) throws{
          manager.currentDatabase.fetch(withRecordID: recordID) { record, error in
             guard let record = record else {
                 if let error = error {
@@ -84,7 +96,11 @@ public class DAO<T> where T: CloudObject {
                 }
                 return
             }
-            completion(.success(T(record: record)))
+            do {
+                completion(.success( try T(record: record)))
+            } catch {
+                completion(.failure(CloudKitError.unableToConvertRecord))
+            }
         }
     }
     
@@ -98,7 +114,7 @@ public class DAO<T> where T: CloudObject {
     }
     
     
-    public func save(object: T, completion: @escaping (Swift.Result<T, Error>) -> Void) {
+    public func save(object: T, completion: @escaping (Swift.Result<T, Error>) -> Void) throws{
         let record = object.toRecord()
         manager.currentDatabase.save(record) { (savedRecord, error) in
             guard let savedRecord = savedRecord else {
@@ -107,13 +123,16 @@ public class DAO<T> where T: CloudObject {
                 }
                 return
             }
-            let savedObject = T(record: savedRecord)
-            completion(.success(savedObject))
-            
+            do {
+                let savedObject = try T(record: savedRecord)
+                completion(.success(savedObject))
+            } catch {
+                completion(.failure(CloudKitError.unableToConvertRecord))
+            }
         }
     }
     
-    public func update(recordID: CKRecord.ID, object: T, completion: @escaping (Swift.Result<T, Error>) -> Void) {
+    public func update(recordID: CKRecord.ID, object: T, completion: @escaping (Swift.Result<T, Error>) -> Void) throws{
         object.recordID = recordID
         let modifyOperation = CKModifyRecordsOperation(recordsToSave: [object.toRecord()], recordIDsToDelete: nil)
         modifyOperation.savePolicy = .allKeys
@@ -127,7 +146,13 @@ public class DAO<T> where T: CloudObject {
                 }
                 return
             }
-            completion(.success(T(record: savedRecords[0])))
+            do {
+                let object = try T(record: savedRecords[0])
+                completion(.success(object))
+            } catch {
+                completion(.failure(CloudKitError.unableToConvertRecord))
+            }
+           
 
         }
         manager.currentDatabase.add(modifyOperation)
@@ -138,6 +163,6 @@ public class DAO<T> where T: CloudObject {
 public protocol CloudObject: class {
     var recordID: (CKRecord.ID)? { get set }
     static var recordType: String { get }
-    init(record: CKRecord)
+    init(record: CKRecord) throws
     func toRecord() -> CKRecord
 }
