@@ -9,12 +9,14 @@
 import CloudKit
 import Foundation
 
-public enum DatabaseType{
+/// Represents the nature of the CloudKitDataBase
+public enum DatabaseType {
     case privateDB
     case publicDB
     case sharedDB
 }
 
+/// Describes the Errors that may occur on operations in CloudKitManager
 public enum CloudKitError: Error {
     case invalidRecordID
     case unableToConvertRecord
@@ -157,12 +159,4 @@ public class DAO<T> where T: CloudObject {
         }
         manager.currentDatabase.add(modifyOperation)
     }
-    
-}
-
-public protocol CloudObject: class {
-    var recordID: (CKRecord.ID)? { get set }
-    static var recordType: String { get }
-    init(record: CKRecord) throws
-    func toRecord() -> CKRecord
 }

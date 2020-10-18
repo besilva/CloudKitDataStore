@@ -1,0 +1,61 @@
+//
+//  CKAsset+Image.swift
+//  
+//
+//  Created by Lucas Antevere Santana on 18/10/20.
+//
+
+import CloudKit
+import Foundation
+
+#if os(macOS)
+
+import AppKit
+typealias Image = NSImage
+
+#else
+import UIKit
+typealias Image = UIImage
+
+#endif
+
+enum CKAssetError: Error {
+    case emptyURL
+    case corruptedData
+}
+
+extension CKAsset {
+    
+    convenience init(image: Image, fileType: ImageFileType = .JPG(compressionQuality: 100)) throws {
+        
+        var url: URL
+        
+        do {
+            
+            url = try image.saveToTempLocation(withFileType: fileType)
+            
+            self.init(fileURL: url)
+            
+        } catch let error {
+            print("Error converting image to Data at CKAsset.init(image:,fileType:): \(error)")
+            throw error
+        }
+    }
+    
+    func imageAsset() throws -> Image? {
+        
+        guard let url = fileURL else {
+            throw CKAssetError.emptyURL
+        }
+        
+        do {
+            
+            let data = try Data(contentsOf: url)
+        
+            return Image(data: data)
+            
+        } catch {
+            throw CKAssetError.corruptedData
+        }
+    }
+}
