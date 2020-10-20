@@ -13,8 +13,8 @@ import AppKit
 import UIKit
 #endif
 
-
-enum ImageFileType {
+/// Types of representation of an image
+public enum ImageFileType {
     
     case PNG
     case JPG(compressionQuality: CGFloat)
@@ -32,31 +32,54 @@ enum ImageFileType {
     }
 }
 
-enum ImageConversionError: Int, Error {
+/// Describes errors that may occur during a image conversion
+public enum ImageConversionError: Int, Error {
     case unableToConvertImageToData
     case unableToWriteDataToTemporaryFile
+    
+    #if os(macOS)
+    
+    case unableToLoadTiffRepresentation
+    case unableToLoadBitMapRepresentation
+    
+    #endif
 }
 
 #if os(macOS)
 
-extension NSImage {
+public extension NSImage {
     
-    var pngData: Data? {
+    /// PNG representation of this NSImage
+    func pngData() throws -> Data? {
         
-        if let tiff = self.tiffRepresentation, let tiffData = NSBitmapImageRep(data: tiff) {
-            return tiffData.representation(using: .png, properties: [:])
+        if let tiff = self.tiffRepresentation {
+            
+            if let tiffData = NSBitmapImageRep(data: tiff) {
+                return tiffData.representation(using: .png, properties: [:])
+                
+            } else {
+                throw ImageConversionError.unableToLoadBitMapRepresentation
+            }
+            
+        } else {
+            throw ImageConversionError.unableToLoadTiffRepresentation
         }
-        
-        return nil
     }
     
-    func jpegData(compressionQuality: CGFloat) -> Data? {
+    func jpegData(compressionQuality: CGFloat) throws -> Data? {
         
-        if let tiff = self.tiffRepresentation, let tiffData = NSBitmapImageRep(data: tiff) {
-            return tiffData.representation(using: .jpeg, properties: [.compressionFactor: compressionQuality])
+        if let tiff = self.tiffRepresentation {
+            
+            if let tiffData = NSBitmapImageRep(data: tiff) {
+                return tiffData.representation(using: .jpeg, properties: [.compressionFactor: compressionQuality])
+                
+            } else {
+                throw ImageConversionError.unableToLoadBitMapRepresentation
+            }
+            
+        } else {
+            throw ImageConversionError.unableToLoadTiffRepresentation
         }
-        
-        return nil
     }
     
     func saveToTempLocation(withFileType fileType: ImageFileType) throws -> URL {
@@ -66,10 +89,10 @@ extension NSImage {
         switch fileType {
             
             case .JPG(let quality):
-                imageData = self.jpegData(compressionQuality: quality)
+                imageData = try self.jpegData(compressionQuality: quality)
                 
             case .PNG:
-                imageData = self.pngData
+                imageData = try self.pngData()
                 
         }
         
@@ -95,7 +118,7 @@ extension NSImage {
 
 #else
 
-extension UIImage {
+public extension UIImage {
     
     func saveToTempLocation(withFileType fileType: ImageFileType) throws -> URL {
         
@@ -117,8 +140,8 @@ extension UIImage {
         
         let filename = ProcessInfo.processInfo.globallyUniqueString + fileType.fileExtension
         
-        let url = NSURL.fileURL(withPath: NSTemporaryDirectory()).appendingPathComponent(filename)
-        
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(filename)
+                
         do {
             try data.write(to: url)
             

@@ -11,22 +11,22 @@ import Foundation
 #if os(macOS)
 
 import AppKit
-typealias Image = NSImage
+public typealias CloudAssetImage = NSImage
 
 #else
 import UIKit
-typealias Image = UIImage
+public typealias CloudAssetImage = UIImage
 
 #endif
 
-enum CKAssetError: Error {
+public enum CKAssetError: Error {
     case emptyURL
     case corruptedData
 }
 
-extension CKAsset {
+public extension CKAsset {
     
-    convenience init(image: Image, fileType: ImageFileType = .JPG(compressionQuality: 100)) throws {
+    convenience init(image: CloudAssetImage, fileType: ImageFileType = .JPG(compressionQuality: 100)) throws {
         
         var url: URL
         
@@ -42,7 +42,7 @@ extension CKAsset {
         }
     }
     
-    func imageAsset() throws -> Image? {
+    func imageAsset() throws -> CloudAssetImage? {
         
         guard let url = fileURL else {
             throw CKAssetError.emptyURL
@@ -52,7 +52,7 @@ extension CKAsset {
             
             let data = try Data(contentsOf: url)
         
-            return Image(data: data)
+            return CloudAssetImage(data: data)
             
         } catch {
             throw CKAssetError.corruptedData
