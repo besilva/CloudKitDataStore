@@ -49,11 +49,7 @@ public class CloudKitManager: NSObject {
     }
     
     private override init() {
-        if !CloudKitManager.identifier.isEmpty {
-            container =  CKContainer(identifier: CloudKitManager.identifier)
-        } else {
-            container = CKContainer.default()
-        }
+        container =  CKContainer(identifier: CloudKitManager.identifier)
     }
     
     public func changeDatabase(type: DatabaseType) {
