@@ -62,30 +62,61 @@ public class DAO<T> where T: CloudObject {
     
     public init() {}
     
-    public func fetch(predicate: NSPredicate, completion: @escaping (Swift.Result<[T], Error>) -> Void) throws {
+    public func fetch(predicate: NSPredicate, numberOfResults: Int = 10, completion: @escaping (Swift.Result<([T], CKQueryOperation.Cursor?), Error>) -> Void) throws {
         let query = CKQuery(recordType: T.recordType, predicate: predicate)
-        
-        
-        manager.currentDatabase.perform(
-            query,
-            inZoneWith: CKRecordZone.default().zoneID
-        ) { results, error in
-            if let error = error {
+        var objects: [T] = []
+        let operation = CKQueryOperation(query: query)
+        operation.resultsLimit = numberOfResults
+
+        operation.recordFetchedBlock = { record in
+            do {
+                let object = try T(record: record)
+                objects.append(object)
+            } catch {
                 completion(.failure(error))
             }
-            guard let results = results else { return }
-            var contents: [T] = []
-            for result in results {
-                do {
-                    let content = try T(record: result)
-                    contents.append(content)
-                } catch {
-                    return completion(.failure(CloudKitError.unableToConvertRecord))
+        }
+
+        operation.queryCompletionBlock = { (cursor, error) in
+            DispatchQueue.main.async {
+                if error == nil {
+                    completion(.success((objects, cursor)))
+                } else if let error = error{
+                    completion(.failure(error))
                 }
             }
-            
-            completion(.success(contents))
         }
+
+        manager.currentDatabase.add(operation)
+
+    }
+
+    public func fetch(cursor: CKQueryOperation.Cursor, numberOfResults: Int = 10, completion: @escaping (Swift.Result<([T], CKQueryOperation.Cursor?), Error>) -> Void) throws {
+        var objects: [T] = []
+        let operation = CKQueryOperation(cursor: cursor)
+        operation.resultsLimit = numberOfResults
+
+        operation.recordFetchedBlock = { record in
+            do {
+                let object = try T(record: record)
+                objects.append(object)
+            } catch {
+                completion(.failure(error))
+            }
+        }
+
+        operation.queryCompletionBlock = { (cursor, error) in
+            DispatchQueue.main.async {
+                if error == nil {
+                    completion(.success((objects, cursor)))
+                } else if let error = error{
+                    completion(.failure(error))
+                }
+            }
+        }
+
+        manager.currentDatabase.add(operation)
+
     }
     
     public func fetchOne(recordID: CKRecord.ID, completion: @escaping (Result<T, Error>) -> Void) throws{
@@ -132,10 +163,10 @@ public class DAO<T> where T: CloudObject {
         }
     }
     
-    public func update(recordID: CKRecord.ID, object: T, completion: @escaping (Swift.Result<T, Error>) -> Void) throws{
+    public func update(recordID: CKRecord.ID, object: T, policy:  CKModifyRecordsOperation.RecordSavePolicy = .allKeys, completion: @escaping (Swift.Result<T, Error>) -> Void) throws{
         object.recordID = recordID
         let modifyOperation = CKModifyRecordsOperation(recordsToSave: [object.toRecord()], recordIDsToDelete: nil)
-        modifyOperation.savePolicy = .allKeys
+        modifyOperation.savePolicy = policy
         modifyOperation.qualityOfService = QualityOfService.userInitiated
         modifyOperation.modifyRecordsCompletionBlock = { savedRecords, deletedRecordIDs, operationError in
             //   the completion block code here
