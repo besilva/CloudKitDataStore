@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  CloudObject.swift
 //  
 //
 //  Created by Lucas Antevere Santana on 18/10/20.
