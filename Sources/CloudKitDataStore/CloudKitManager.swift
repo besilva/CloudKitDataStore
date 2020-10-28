@@ -29,11 +29,15 @@ public class CloudKitManager: NSObject {
 
     public static let shared = CloudKitManager()
     
-    public static var identifier: String = ""
+    public static var identifier: String = "" {
+        didSet {
+            shared.container = CKContainer(identifier: CloudKitManager.identifier)
+        }
+    }
     
     internal var databaseType: DatabaseType = .publicDB
     
-    private let container: CKContainer
+    private var container: CKContainer
     
     internal var currentDatabase: CKDatabase {
         switch self.databaseType {
@@ -47,12 +51,7 @@ public class CloudKitManager: NSObject {
     }
     
     private override init() {
-        if !CloudKitManager.identifier.isEmpty {
-            container =  CKContainer(identifier: CloudKitManager.identifier)
-        } else {
-            container = CKContainer.default()
-        }
-        
+        container =  CKContainer(identifier: CloudKitManager.identifier)
     }
     
     public func changeDatabase(type: DatabaseType) {
