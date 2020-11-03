@@ -64,11 +64,8 @@ public class CloudKitManager: NSObject {
             
             switch result {
                 
-                case .success(let persmission) where persmission == .granted:
-                    self.fetchUserID(completion: completion)
-                
                 case .success:
-                    completion(.failure(.accessDenied))
+                    self.fetchUserID(completion: completion)
                 
                 case .failure(let error):
                     completion(.failure(.unknownError(error)))
