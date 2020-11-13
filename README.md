@@ -1,3 +1,3 @@
 # CloudKitDataStore
 
-Basic CloudKit operations, install and start using
+WIP: Basic CloudKit operations, install and start using
