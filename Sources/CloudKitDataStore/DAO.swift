@@ -86,6 +86,33 @@ public class DAO<T> where T: CloudObject {
         }
     }
     
+    public func fetchMany(recordsID: [CKRecord.ID], completion: @escaping (Result<[T], Error>) -> Void) throws {
+        
+        let operation = CKFetchRecordsOperation(recordIDs: recordsID)
+        
+        operation.fetchRecordsCompletionBlock = { records, error in
+            
+            guard let records = records else {
+                
+                if let error = error {
+                    return completion(.failure(error))
+                }
+                
+                return
+            }
+            
+            do {
+                
+                completion(.success( try records.values.map {try T(record: $0)}))
+                
+            } catch {
+                completion(.failure(CloudKitError.unableToConvertRecord))
+            }
+        }
+        
+        manager.currentDatabase.add(operation)
+    }
+    
     public func delete(object: T, completion: @escaping (Swift.Result<CKRecord.ID?, Error>) -> Void) {
         guard let ID = object.recordID else {
             return completion(.failure(CloudKitError.invalidRecordID))
